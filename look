@@ -1,0 +1,82 @@
+#!/usr/bin/env node
+/**
+ * Created by zhangliming on 14-8-29.
+ */
+
+var program = require('commander');
+var fs = require('fs');
+
+program.version('0.0.1');
+
+program
+    .command('live <logDir>')
+    .description('live monitor for log offset')
+    .option("-n, --numOfSeconds <n>", "the number of seconds.",parseInt)
+    .option("-d, --date <n>", "the date of the log file.",parseInt)
+    .action(function(logDir, options){
+
+        var numOfSeconds = options.numOfSeconds;
+        var date = options.date;
+        var subFiles=getFiles(logDir);
+
+        var logFiles={};
+        subFiles.forEach(function(file){
+            if(file.indexOf(date)>-1){
+                if(file.indexOf(".offset")>-1){
+                    var logFileName=getLogName(getFileName(file));
+                    if(!logFiles[logFileName]){
+                        logFiles[logFileName]={offset:readInt64BEasFloat(fs.readFileSync(file),0)};
+                    }else{
+                        logFiles[logFileName]['offset']=readInt64BEasFloat(fs.readFileSync(file),0);
+                    }
+
+                }else{
+                    var logFileName=getFileName(file);
+                    if(!logFiles[logFileName]){
+                        logFiles[logFileName]={length:fs.statSync(file).size};
+                    }else{
+                        logFiles[logFileName]['length']=fs.statSync(file).size;
+
+                    }
+                }
+
+            }
+        });
+        console.log(logFiles);
+
+    });
+
+
+program.parse(process.argv);
+
+function getLogName(offsetFileName){
+    return offsetFileName.substr(1,offsetFileName.length-8);
+}
+
+function getFileName(file){
+    var paths=file.split('/');
+    var fileName=paths[paths.length-1];
+    return fileName;
+}
+
+function readInt64BEasFloat(buffer, offset) {
+    var low = buffer.readInt32BE(offset + 4);
+    var n = buffer.readInt32BE(offset) * 4294967296.0 + low;
+    if (low < 0) n += 4294967296;
+    return n;
+}
+
+function getFiles(dir,subfiles){
+    subfiles = subfiles || [];
+    var files = fs.readdirSync(dir);
+    for(var i in files){
+        if (!files.hasOwnProperty(i)) continue;
+        var name = dir+'/'+files[i];
+        if (fs.statSync(name).isDirectory()){
+            getFiles(name,subfiles);
+        } else {
+            subfiles.push(name);
+        }
+    }
+    return subfiles;
+}
