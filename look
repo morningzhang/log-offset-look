@@ -5,49 +5,69 @@
 
 var program = require('commander');
 var fs = require('fs');
+var util=require('util');
 
-program.version('0.0.1');
 
 program
+    .version('0.0.1')
     .command('live <logDir>')
     .description('live monitor for log offset')
     .option("-n, --numOfSeconds <n>", "the number of seconds.",parseInt)
     .option("-d, --date <n>", "the date of the log file.",parseInt)
     .action(function(logDir, options){
 
-        var numOfSeconds = options.numOfSeconds;
+        var numOfSeconds = options.numOfSeconds||5;
         var date = options.date;
-        var subFiles=getFiles(logDir);
 
-        var logFiles={};
-        subFiles.forEach(function(file){
-            if(file.indexOf(date)>-1){
-                if(file.indexOf(".offset")>-1){
-                    var logFileName=getLogName(getFileName(file));
-                    if(!logFiles[logFileName]){
-                        logFiles[logFileName]={offset:readInt64BEasFloat(fs.readFileSync(file),0)};
-                    }else{
-                        logFiles[logFileName]['offset']=readInt64BEasFloat(fs.readFileSync(file),0);
-                    }
 
-                }else{
-                    var logFileName=getFileName(file);
-                    if(!logFiles[logFileName]){
-                        logFiles[logFileName]={length:fs.statSync(file).size};
-                    }else{
-                        logFiles[logFileName]['length']=fs.statSync(file).size;
-
-                    }
-                }
-
-            }
-        });
-        console.log(logFiles);
+       setInterval(function(){
+            var logFiles=getOffsetAndLength(getFiles(logDir),date);
+            printLogFiles(logFiles);
+        },numOfSeconds*1000);
 
     });
 
-
 program.parse(process.argv);
+
+
+
+
+
+function printLogFiles(logFiles){
+    console.log('//--------------------------');
+    Object.keys(logFiles).forEach(function(logFileName){
+        var logFile=logFiles[logFileName];
+        console.log(util.format('%s -> Offset: %d , Length: %d , O/L: %d\%',logFileName,logFile.offset,logFile.length,(logFile.offset*100/logFile.length).toFixed(3)));
+    });
+}
+
+function getOffsetAndLength(subFiles,date){
+    var logFiles={};
+    subFiles.forEach(function(file){
+        if(file.indexOf(date)>-1){
+            if(file.indexOf(".offset")>-1){
+                var logFileName=getLogName(getFileName(file));
+                if(!logFiles[logFileName]){
+                    logFiles[logFileName]={offset:readInt64BEasFloat(fs.readFileSync(file),0)};
+                }else{
+                    logFiles[logFileName]['offset']=readInt64BEasFloat(fs.readFileSync(file),0);
+                }
+
+            }else{
+                var logFileName=getFileName(file);
+                if(!logFiles[logFileName]){
+                    logFiles[logFileName]={length:fs.statSync(file).size};
+                }else{
+                    logFiles[logFileName]['length']=fs.statSync(file).size;
+
+                }
+            }
+
+        }
+    });
+    return logFiles;
+}
+
 
 function getLogName(offsetFileName){
     return offsetFileName.substr(1,offsetFileName.length-8);
