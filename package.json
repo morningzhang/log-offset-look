@@ -1,11 +1,8 @@
 {
   "name": "log-offset-look",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "description": "",
-  "main": "look",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "main": "bin/log-offset-look",
   "repository": {
     "type": "git",
     "url": "https://github.com/morningzhang/log-offset-look"
@@ -13,6 +10,9 @@
     "dependencies": {
         "commander":""
     },
+  "scripts": {
+    "start": "node ./bin/log-offset-look"
+  },
   "author": "zhangliming",
   "license": "ISC",
   "bugs": {
